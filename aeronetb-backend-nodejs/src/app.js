@@ -3,6 +3,9 @@ const cors = require('cors');
 const config = require('./config/config');
 
 // Import routes
+const partRoutes = require('./routes/parts');
+const orderRoutes = require('./routes/orders');
+const dashboardRoutes = require('./routes/dashboard');
 const authRoutes = require('./routes/auth');
 const supplierRoutes = require('./routes/suppliers');
 const iotRoutes = require('./routes/iot');
@@ -31,6 +34,9 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.use('/api/parts', partRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/iot', iotRoutes);
