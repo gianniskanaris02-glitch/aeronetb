@@ -5,13 +5,28 @@ let pool = null;
 
 const initPostgres = async () => {
   try {
-    pool = new Pool(config.postgres);
-    
+    // Use DATABASE_URL if provided (Render provides this automatically)
+    const poolConfig = process.env.DATABASE_URL
+      ? {
+          connectionString: process.env.DATABASE_URL,
+          ssl: {
+            rejectUnauthorized: false, // Required for Render PostgreSQL
+          },
+        }
+      : {
+          ...config.postgres,
+          ssl: process.env.NODE_ENV === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
+        };
+
+    pool = new Pool(poolConfig);
+
     // Test connection
     const client = await pool.connect();
     console.log('✅ PostgreSQL connected:', config.postgres.database);
     client.release();
-    
+
     return pool;
   } catch (error) {
     console.error('❌ PostgreSQL connection failed:', error.message);
