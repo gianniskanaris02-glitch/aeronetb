@@ -3,53 +3,30 @@ const cors = require('cors');
 const config = require('./config/config');
 
 // Import routes
-const partRoutes = require('./routes/parts');
-const orderRoutes = require('./routes/orders');
-const dashboardRoutes = require('./routes/dashboard');
 const authRoutes = require('./routes/auth');
 const supplierRoutes = require('./routes/suppliers');
 const iotRoutes = require('./routes/iot');
-// TODO: Import other routes as you create them
-// const partRoutes = require('./routes/parts');
-// const orderRoutes = require('./routes/orders');
-// const inventoryRoutes = require('./routes/inventory');
-// const qualityRoutes = require('./routes/quality');
-// const alertRoutes = require('./routes/alerts');
-// const dashboardRoutes = require('./routes/dashboard');
+const setupRoutes = require('./routes/setup'); // REMOVE AFTER SETUP
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: config.cors.origins,
-  credentials: true,
-}));
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging
+// Logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
 // Routes
-app.use('/api/parts', partRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/iot', iotRoutes);
+app.use('/api/setup', setupRoutes); // REMOVE AFTER SETUP
 
-// TODO: Add other routes as you create them
-// app.use('/api/parts', partRoutes);
-// app.use('/api/orders', orderRoutes);
-// app.use('/api/inventory', inventoryRoutes);
-// app.use('/api/quality', qualityRoutes);
-// app.use('/api/alerts', alertRoutes);
-// app.use('/api/dashboard', dashboardRoutes);
-
-// Root endpoint
+// Root
 app.get('/', (req, res) => {
   res.json({
     message: 'AeroNetB Aerospace API',
@@ -66,30 +43,19 @@ app.get('/', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// 404 handler
+// 404
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint not found',
-    path: req.path,
-  });
+  res.status(404).json({ success: false, message: 'Endpoint not found' });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error',
-    error: config.nodeEnv === 'development' ? err.stack : undefined,
-  });
+  res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
 module.exports = app;
+
