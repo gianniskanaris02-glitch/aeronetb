@@ -1,90 +1,51 @@
 const app = require('./app');
-const config = require('./config/config');
 const { initPostgres, closePostgres } = require('./database/postgresql');
 const { initMongoDB, closeMongoDB } = require('./database/mongodb');
 
-const PORT = config.port;
-const HOST = config.host;
+const PORT = process.env.PORT || 8000;
 
 let server;
 
 const startServer = async () => {
   try {
-    // Initialize databases
-    console.log('🔄 Initializing database connections...');
+    console.log('🔄 Starting AeroNetB server...');
+    console.log('🔄 NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔄 DATABASE_URL exists:', !!process.env.DATABASE_URL);
+
+    // Connect PostgreSQL
     await initPostgres();
+
+    // Connect MongoDB (optional)
     await initMongoDB();
-    console.log('✅ All database connections established\n');
-    
-    // Start server
-    server = app.listen(PORT, HOST, () => {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🚀 AeroNetB Aerospace API Server');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`📡 Server running on: http://${HOST}:${PORT}`);
-      console.log(`🌍 Environment: ${config.nodeEnv}`);
-      console.log(`📚 API Base: http://${HOST}:${PORT}/api`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-      console.log('Available endpoints:');
-      console.log(`  • POST   /api/auth/login`);
-      console.log(`  • GET    /api/auth/me`);
-      console.log(`  • GET    /api/suppliers`);
-      console.log(`  • POST   /api/suppliers`);
-      console.log(`  • GET    /api/iot/devices`);
-      console.log(`  • GET    /api/iot/devices/:deviceId/readings`);
-      console.log(`  • POST   /api/iot/sensors/readings`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // Start HTTP server
+    server = app.listen(PORT, '0.0.0.0', () => {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🚀 AeroNetB API is LIVE');
+      console.log(`📡 Port: ${PORT}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
+
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('❌ Server failed to start:', error.message);
     process.exit(1);
   }
 };
 
-// Graceful shutdown
-const gracefulShutdown = async (signal) => {
-  console.log(`\n🔄 Received ${signal}. Shutting down gracefully...`);
-  
-  if (server) {
-    server.close(async () => {
-      console.log('✅ HTTP server closed');
-      
-      try {
-        await closePostgres();
-        await closeMongoDB();
-        console.log('✅ All connections closed');
-        console.log('👋 Goodbye!\n');
-        process.exit(0);
-      } catch (error) {
-        console.error('❌ Error during shutdown:', error);
-        process.exit(1);
-      }
-    });
-    
-    // Force shutdown after 10 seconds
-    setTimeout(() => {
-      console.error('⚠️  Forced shutdown after timeout');
-      process.exit(1);
-    }, 10000);
-  } else {
-    process.exit(0);
-  }
-};
-
-// Handle shutdown signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Handle uncaught errors
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  gracefulShutdown('uncaughtException');
+process.on('SIGTERM', async () => {
+  console.log('Shutting down...');
+  if (server) server.close();
+  await closePostgres();
+  await closeMongoDB();
+  process.exit(0);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  gracefulShutdown('unhandledRejection');
+process.on('SIGINT', async () => {
+  console.log('Shutting down...');
+  if (server) server.close();
+  await closePostgres();
+  await closeMongoDB();
+  process.exit(0);
 });
 
-// Start the server
 startServer();

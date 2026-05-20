@@ -1,29 +1,33 @@
 const { MongoClient } = require('mongodb');
-const config = require('../config/config');
 
 let client = null;
 let database = null;
 
 const initMongoDB = async () => {
   try {
-    client = new MongoClient(config.mongodb.uri);
+    const uri = process.env.MONGODB_URI;
+    const dbName = process.env.MONGODB_DB || 'aeronetb_mongo';
+
+    if (!uri || uri === 'mongodb://localhost:27017') {
+      console.log('⚠️  MongoDB URI not configured - skipping MongoDB connection');
+      return;
+    }
+
+    client = new MongoClient(uri);
     await client.connect();
-    database = client.db(config.mongodb.database);
-
-    // Test connection
+    database = client.db(dbName);
     await database.command({ ping: 1 });
-    console.log('✅ MongoDB connected:', config.mongodb.database);
-
+    console.log('✅ MongoDB connected:', dbName);
     return database;
   } catch (error) {
-    console.error('⚠️ MongoDB connection failed (non-critical):', error.message);
-    // Don't throw - allow server to start without MongoDB
+    console.warn('⚠️  MongoDB not available:', error.message);
+    // Don't throw - server continues without MongoDB
   }
 };
 
 const getDB = () => {
   if (!database) {
-    throw new Error('MongoDB not initialized.');
+    throw new Error('MongoDB not initialized');
   }
   return database;
 };
@@ -35,8 +39,4 @@ const closeMongoDB = async () => {
   }
 };
 
-module.exports = {
-  initMongoDB,
-  getDB,
-  closeMongoDB,
-};
+module.exports = { initMongoDB, getDB, closeMongoDB };

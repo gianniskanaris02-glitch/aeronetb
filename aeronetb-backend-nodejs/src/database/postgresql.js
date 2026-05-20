@@ -1,30 +1,28 @@
 const { Pool } = require('pg');
-const config = require('../config/config');
 
 let pool = null;
 
 const initPostgres = async () => {
   try {
-    // Use DATABASE_URL if provided (Render provides this automatically)
-    const poolConfig = process.env.DATABASE_URL
-      ? {
-          connectionString: process.env.DATABASE_URL,
-          ssl: {
-            rejectUnauthorized: false, // Required for Render PostgreSQL
-          },
-        }
-      : {
-          ...config.postgres,
-          ssl: process.env.NODE_ENV === 'production'
-            ? { rejectUnauthorized: false }
-            : false,
-        };
+    const connectionString = process.env.DATABASE_URL;
 
-    pool = new Pool(poolConfig);
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+
+    pool = new Pool({
+      connectionString,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+      max: 10,
+    });
 
     // Test connection
     const client = await pool.connect();
-    console.log('✅ PostgreSQL connected:', config.postgres.database);
+    console.log('✅ PostgreSQL connected successfully');
     client.release();
 
     return pool;
@@ -36,7 +34,7 @@ const initPostgres = async () => {
 
 const getPool = () => {
   if (!pool) {
-    throw new Error('PostgreSQL pool not initialized. Call initPostgres() first.');
+    throw new Error('PostgreSQL pool not initialized');
   }
   return pool;
 };
@@ -44,12 +42,8 @@ const getPool = () => {
 const closePostgres = async () => {
   if (pool) {
     await pool.end();
-    console.log('✅ PostgreSQL connection pool closed');
+    console.log('✅ PostgreSQL connection closed');
   }
 };
 
-module.exports = {
-  initPostgres,
-  getPool,
-  closePostgres,
-};
+module.exports = { initPostgres, getPool, closePostgres };
