@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://aeronetb-backend.onrender.com/api';
 
 // Get token from localStorage
 function getToken() {
