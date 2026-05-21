@@ -7,25 +7,55 @@ const initPostgres = async () => {
     const connectionString = process.env.DATABASE_URL;
 
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set');
+      throw new Error('DATABASE_URL is not set');
+    }
+
+    console.log('🔄 Connecting to PostgreSQL...');
+
+    // Check if using internal Render URL
+    const isInternal = connectionString.includes('.internal');
+    const isExternal = connectionString.includes('render.com');
+
+    let sslConfig;
+    if (isInternal) {
+      // Internal Render connections don't need SSL
+      sslConfig = false;
+    } else if (isExternal) {
+      // External connections need SSL but no certificate verification
+      sslConfig = { rejectUnauthorized: false };
+    } else {
+      sslConfig = false;
     }
 
     pool = new Pool({
       connectionString,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-      connectionTimeoutMillis: 10000,
-      idleTimeoutMillis: 30000,
-      max: 10,
+      ssl: sslConfig,
+      connectionTimeoutMillis: 30000,
+      idleTimeoutMillis: 60000,
+      max: 5,
     });
 
-    // Test connection
-    const client = await pool.connect();
-    console.log('✅ PostgreSQL connected successfully');
-    client.release();
+    pool.on('error', (err) => {
+      console.error('Pool error:', err.message);
+    });
 
-    return pool;
+    // Test with retry
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const client = await pool.connect();
+        await client.query('SELECT 1');
+        client.release();
+        console.log('✅ PostgreSQL connected successfully');
+        return pool;
+      } catch (err) {
+        retries--;
+        console.log(`⚠️ Retry... attempts left: ${retries}`);
+        if (retries === 0) throw err;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+
   } catch (error) {
     console.error('❌ PostgreSQL connection failed:', error.message);
     throw error;
@@ -33,16 +63,14 @@ const initPostgres = async () => {
 };
 
 const getPool = () => {
-  if (!pool) {
-    throw new Error('PostgreSQL pool not initialized');
-  }
+  if (!pool) throw new Error('PostgreSQL not initialized');
   return pool;
 };
 
 const closePostgres = async () => {
   if (pool) {
     await pool.end();
-    console.log('✅ PostgreSQL connection closed');
+    console.log('✅ PostgreSQL closed');
   }
 };
 
