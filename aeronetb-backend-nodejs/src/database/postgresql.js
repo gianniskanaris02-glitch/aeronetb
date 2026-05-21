@@ -12,24 +12,12 @@ const initPostgres = async () => {
 
     console.log('🔄 Connecting to PostgreSQL...');
 
-    // Check if using internal Render URL
-    const isInternal = connectionString.includes('.internal');
-    const isExternal = connectionString.includes('render.com');
-
-    let sslConfig;
-    if (isInternal) {
-      // Internal Render connections don't need SSL
-      sslConfig = false;
-    } else if (isExternal) {
-      // External connections need SSL but no certificate verification
-      sslConfig = { rejectUnauthorized: false };
-    } else {
-      sslConfig = false;
-    }
-
     pool = new Pool({
       connectionString,
-      ssl: sslConfig,
+      ssl: {
+        rejectUnauthorized: false,
+        checkServerIdentity: () => undefined,
+      },
       connectionTimeoutMillis: 30000,
       idleTimeoutMillis: 60000,
       max: 5,
@@ -39,22 +27,11 @@ const initPostgres = async () => {
       console.error('Pool error:', err.message);
     });
 
-    // Test with retry
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        const client = await pool.connect();
-        await client.query('SELECT 1');
-        client.release();
-        console.log('✅ PostgreSQL connected successfully');
-        return pool;
-      } catch (err) {
-        retries--;
-        console.log(`⚠️ Retry... attempts left: ${retries}`);
-        if (retries === 0) throw err;
-        await new Promise(r => setTimeout(r, 3000));
-      }
-    }
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    console.log('✅ PostgreSQL connected successfully');
+    return pool;
 
   } catch (error) {
     console.error('❌ PostgreSQL connection failed:', error.message);
