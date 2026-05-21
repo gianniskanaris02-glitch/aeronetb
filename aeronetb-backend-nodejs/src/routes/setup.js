@@ -389,5 +389,29 @@ router.get('/init', async (req, res) => {
     client.release();
   }
 });
+// Fix passwords route
+router.get('/fix-passwords', async (req, res) => {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash('password123', 10);
+    await client.query(
+      `UPDATE users SET password_hash = $1 
+       WHERE username IN ('admin','scmanager','jsmith','ainspector','rjohnson','wmanager','eengineer','auditor')`,
+      [hash]
+    );
+    const users = await client.query('SELECT username, email FROM users ORDER BY user_id');
+    res.json({
+      success: true,
+      message: 'All passwords updated to: password123',
+      users: users.rows
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
 
 module.exports = router;
