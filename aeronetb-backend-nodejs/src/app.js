@@ -7,12 +7,14 @@ const authRoutes = require('./routes/auth');
 const supplierRoutes = require('./routes/suppliers');
 const iotRoutes = require('./routes/iot');
 const setupRoutes = require('./routes/setup'); // REMOVE AFTER SETUP
-
+const path = require('path');
 const app = express();
 
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '../public')));
+
 
 // Logging
 app.use((req, res, next) => {
